@@ -485,7 +485,7 @@
       scroll_dir = offset_top < last_pos ? 'up' : 'down';
       diff_y = offset_top - last_pos;
       last_pos = offset_top;
-      console.log(offset_top, top_limit);
+      
       if (offset_top > top_limit) {
         // http://geek-and-poke.com/geekandpoke/2012/7/27/simply-explained.html
         if (bottom_limit + options_top + (largerSticky ? options_bottom : 0) - (STICKY_OPTIONS.followScroll && largerSticky ? 0 : options_top) <= offset_top + sticky_height - stick_top - ((sticky_height - stick_top > window_height - (top_limit - stick_top) && STICKY_OPTIONS.followScroll) ? (((bottom_distance = sticky_height - window_height - stick_top) > 0) ? bottom_distance : 0) : 0)) { // bottom reached end
