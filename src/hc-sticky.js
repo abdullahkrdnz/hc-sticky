@@ -11,7 +11,6 @@
 
 (function(global, factory) {
   'use strict';
-
   if (typeof module === 'object' && typeof module.exports === 'object') {
     if (global.document) {
       module.exports = factory(global);
@@ -46,6 +45,7 @@
     onResize: null,
     resizeDebounce: 100,
     disable: false,
+    scrollContainer: null,
 
     // deprecated
     queries: null,
@@ -339,6 +339,7 @@
     let stickTo_document;
     let container;
     let inner_sticker;
+    let scrollContainer;
 
     let container_height;
     let container_offsetTop;
@@ -364,6 +365,12 @@
     let calcStickyHeight;
 
     const calcSticky = () => {
+      //setScrollContainer 
+      scrollContainer = STICKY_OPTIONS.scrollContainer 
+        ? typeof STICKY_OPTIONS.scrollContainer === 'string' 
+          ? document.querySelector(STICKY_OPTIONS.scrollContainer)
+            : STICKY_OPTIONS.scrollContainer
+        : window;
       // get/set element styles
       Sticky.css = getStickyCss(elem);
 
@@ -400,21 +407,24 @@
       };
 
       sticky_height = calcStickyHeight();
-
       // get container height
       calcContainerHeight = () => {
-        return !stickTo_document ? container.offsetHeight : Math.max(document.documentElement.clientHeight, document.body.scrollHeight, document.documentElement.scrollHeight, document.body.offsetHeight, document.documentElement.offsetHeight);
+        if(STICKY_OPTIONS.scrollContainer) {
+          return !stickTo_document ? container.offsetHeight : Math.max(scrollContainer.offsetHeight, scrollContainer.scrollHeight);
+        }else{
+          return !stickTo_document ? container.offsetHeight : Math.max(document.documentElement.clientHeight, document.body.scrollHeight, document.documentElement.scrollHeight, document.body.offsetHeight, document.documentElement.offsetHeight);
+        }
       };
 
       container_height = calcContainerHeight();
-
+      
       container_offsetTop = !stickTo_document ? Helpers.offset(container).top : 0;
       elemParent_offsetTop = !STICKY_OPTIONS.stickTo
         ? container_offsetTop // parent is container
         : !stickTo_document
           ? Helpers.offset(elemParent).top
           : 0;
-      window_height = window.innerHeight;
+      window_height = STICKY_OPTIONS.scrollContainer ? scrollContainer.offsetHeight : window.innerHeight;
       sticky_offsetTop = elem.offsetTop - (parseInt(Sticky.css.marginTop) || 0);
 
       // get inner sticker element
@@ -445,11 +455,15 @@
         ? (parseFloat(STICKY_OPTIONS.bottomEnd) / 100) * window_height
         : STICKY_OPTIONS.bottomEnd;
 
-      top_limit = container_offsetTop - options_top + stick_top + sticky_offsetTop;
+      if(STICKY_OPTIONS.scrollContainer) {
+        top_limit = container_offsetTop - options_top + stick_top + sticky_offsetTop - scrollContainer.offsetTop;
+      }else{
+        top_limit = container_offsetTop - options_top + stick_top + sticky_offsetTop;
+      }
     };
 
     // store scroll position so we can determine scroll direction
-    let last_pos = window.pageYOffset || document.documentElement.scrollTop;
+    let last_pos = STICKY_OPTIONS.scrollContainer ? scrollContainer.scrollTop : window.pageYOffset || document.documentElement.scrollTop;
     let diff_y = 0;
     let scroll_dir;
 
@@ -463,16 +477,15 @@
       // check if sticky is bigger than container
       largerSticky = sticky_height > window_height;
 
-      const offset_top = window.pageYOffset || document.documentElement.scrollTop;
+      const offset_top = STICKY_OPTIONS.scrollContainer ? scrollContainer.scrollTop : window.pageYOffset || document.documentElement.scrollTop;
       const sticky_top = Math.round(Helpers.offset(elem).top);
       const sticky_window_top = sticky_top - offset_top;
       let bottom_distance;
-
       // get scroll direction
       scroll_dir = offset_top < last_pos ? 'up' : 'down';
       diff_y = offset_top - last_pos;
       last_pos = offset_top;
-
+      console.log(offset_top, top_limit);
       if (offset_top > top_limit) {
         // http://geek-and-poke.com/geekandpoke/2012/7/27/simply-explained.html
         if (bottom_limit + options_top + (largerSticky ? options_bottom : 0) - (STICKY_OPTIONS.followScroll && largerSticky ? 0 : options_top) <= offset_top + sticky_height - stick_top - ((sticky_height - stick_top > window_height - (top_limit - stick_top) && STICKY_OPTIONS.followScroll) ? (((bottom_distance = sticky_height - window_height - stick_top) > 0) ? bottom_distance : 0) : 0)) { // bottom reached end
@@ -530,7 +543,7 @@
     const disableSticky = () => {
       if (scrollAttached) {
         // detach sticky from scroll
-        Helpers.event.unbind(window, 'scroll', runSticky);
+        Helpers.event.unbind(scrollContainer, 'scroll', runSticky);
 
         // sticky is not attached to scroll anymore
         scrollAttached = false;
@@ -543,10 +556,9 @@
         disableSticky();
         return;
       }
-
+      
       // calculate stuff
       calcSticky();
-
       // check if sticky is bigger than reffering container
       if (sticky_height >= container_height) {
         disableSticky();
@@ -555,10 +567,9 @@
 
       // run
       runSticky();
-
       if (!scrollAttached) {
         // attach sticky to scroll
-        Helpers.event.bind(window, 'scroll', runSticky);
+        Helpers.event.bind(scrollContainer, 'scroll', runSticky);
 
         // sticky is attached to scroll
         scrollAttached = true;
